@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: #05060a;
+  color: #eaf2ff;
+  font-family: var(--font-body);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Hide the default ugly scrollbar in the 3D stage */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0d16;
+}
+::-webkit-scrollbar-thumb {
+  background: #1b2440;
+  border-radius: 6px;
+}
