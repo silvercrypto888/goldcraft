@@ -28,7 +28,7 @@ function FloatingGlyph({
     if (!ref.current) return;
     const t = clock.getElapsedTime();
     // Gentle bob only — no spin.
-    ref.current.position.y = baseY + Math.sin(t * 1.4 + position[0]) * 0.12;
+    ref.current.position.y = baseY + Math.sin(t * 1.4 + position[0]) * 0.1;
   });
 
   return (
@@ -47,36 +47,41 @@ export default function GameStage({
   goldenState: number;
   explosiveStates: number[];
 }) {
-  // Layout (screen coords, y up):
-  //   golden glyph — LEFT, static
+  // Layout (screen coords, y up), with generous spacing between zones:
+  //   golden glyph — FAR LEFT, static
   //   player glyph  — CENTER
-  //   explosives    — RIGHT
-  // 3 explosives stack vertically so all three are readable side-by-side.
+  //   explosives    — FAR RIGHT, vertical stack with clear gaps
+  // The G is ~3.6 world-units wide, so zones sit well outside each other.
+  const ZONE_X = 6.6; // how far left/right the side glyphs sit from center
+  const PLAYER_SCALE = 1.15;
+  const SIDE_SCALE = 1.0;
+  const EXPLO_SPACING = 2.3; // vertical gap between the 3 explosives
+
   return (
     <Canvas
       dpr={[1, 1.5]}
-      camera={{ position: [0, 0, 10], fov: 45 }}
+      camera={{ position: [0, 0, 15], fov: 42 }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       style={{ background: "transparent" }}
     >
       <ambientLight intensity={0.7} />
-      <pointLight position={[4, 5, 6]} intensity={40} color="#7fd4ff" />
-      <pointLight position={[-5, 3, 4]} intensity={28} color="#f5a623" />
+      <pointLight position={[6, 5, 6]} intensity={40} color="#7fd4ff" />
+      <pointLight position={[-6, 3, 4]} intensity={28} color="#f5a623" />
       <pointLight position={[0, -3, 5]} intensity={18} color="#ffffff" />
 
       <Stars />
 
-      {/* Golden glyph — LEFT, static (no spin, not animated) */}
-      <FloatingGlyph position={[-3.4, 0, 0]} state={goldenState} tone="gold" scale={1.1} animate={false} />
+      {/* Golden glyph — FAR LEFT, static (no spin, not animated) */}
+      <FloatingGlyph position={[-ZONE_X, 0, 0]} state={goldenState} tone="gold" scale={SIDE_SCALE} animate={false} />
 
-      {/* Player glyph — CENTER, bigger, animated */}
-      <FloatingGlyph position={[0, 0, 0.4]} state={currentState} tone="player" scale={1.6} animate />
+      {/* Player glyph — CENTER, animated */}
+      <FloatingGlyph position={[0, 0, 0.4]} state={currentState} tone="player" scale={PLAYER_SCALE} animate />
 
-      {/* Explosives — RIGHT, vertical stack, all static */}
+      {/* Explosives — FAR RIGHT, vertical stack with clear gaps */}
       {explosiveStates.map((s, i) => {
-        const y = (i - 1) * 1.7;
+        const y = (i - 1) * EXPLO_SPACING;
         return (
-          <FloatingGlyph key={i} position={[3.4, y, 0]} state={s} tone="danger" scale={0.9} animate={false} />
+          <FloatingGlyph key={i} position={[ZONE_X, y, 0]} state={s} tone="danger" scale={SIDE_SCALE} animate={false} />
         );
       })}
 

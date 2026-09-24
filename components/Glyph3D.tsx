@@ -37,11 +37,12 @@ export default function Glyph3D({
   const target = useRef(new THREE.Quaternion());
   const toneCfg = TONES[tone];
 
-  // Cell geometry — generously larger, chunkier "gold ore" cubes so they read
-  // clearly on the dark background and at size.
-  const cellSize = 1.0;
-  const cellDepth = 0.55; // thicker slab so flips read as a solid block
-  const spacing = 1.24; // gap between cell centers (slightly larger than size)
+  // Cell geometry — chunky "gold ore" cubes, sized so a full G reads clearly
+  // but doesn't crowd neighbors (each G is 5 cells wide, so cellSize + spacing
+  // controls total glyph footprint).
+  const cellSize = 0.55;
+  const cellDepth = 0.4; // thicker slab so flips read as a solid block
+  const spacing = 0.72; // gap between cell centers (slightly larger than size)
 
   const cells = useMemo(
     () =>
