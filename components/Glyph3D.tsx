@@ -3,8 +3,7 @@
 import { useMemo, useRef, useEffect } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
-import { BASE_POINTS } from "@/lib/d8";
-import { stateToQuat } from "@/lib/orient";
+import { stateToQuat, type GroupOrder } from "@/lib/orient";
 
 export type GlyphTone = "player" | "gold" | "danger";
 
@@ -23,13 +22,19 @@ const TONES: Record<GlyphTone, ToneCfg> = {
 interface Glyph3DProps {
   state: number;
   tone: GlyphTone;
-  size?: number; // overall scale
-  animate?: boolean; // smooth-rotate toward state (player) vs static snap (target)
+  /** base glyph points in [-1,1]^2 — passed in per mode so each mode uses its own chiral shape */
+  points: [number, number][];
+  /** group order (4=D8, 6=D12) driving orientation */
+  order: GroupOrder;
+  size?: number;
+  animate?: boolean; // smooth-rotate toward state (player) vs static snap
 }
 
 export default function Glyph3D({
   state,
   tone,
+  points,
+  order,
   size = 1,
   animate = true,
 }: Glyph3DProps) {
@@ -37,27 +42,24 @@ export default function Glyph3D({
   const target = useRef(new THREE.Quaternion());
   const toneCfg = TONES[tone];
 
-  // Cell geometry — chunky "gold ore" cubes, sized so a full G reads clearly
-  // but doesn't crowd neighbors (each G is 5 cells wide, so cellSize + spacing
-  // controls total glyph footprint).
   const cellSize = 0.55;
-  const cellDepth = 0.4; // thicker slab so flips read as a solid block
-  const spacing = 0.72; // gap between cell centers (slightly larger than size)
+  const cellDepth = 0.4;
+  const spacing = 0.72;
 
   const cells = useMemo(
     () =>
-      BASE_POINTS.map(([x, y]) => ({
+      points.map(([x, y]) => ({
         pos: [x * spacing, y * spacing, 0] as [number, number, number],
       })),
-    [spacing]
+    [points, spacing]
   );
 
   useEffect(() => {
-    target.current.copy(stateToQuat(state));
+    target.current.copy(stateToQuat(state, order));
     if (!animate) {
       group.current?.quaternion.copy(target.current);
     }
-  }, [state, animate]);
+  }, [state, order, animate]);
 
   useFrame((_, delta) => {
     if (!animate || !group.current) return;

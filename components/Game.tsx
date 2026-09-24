@@ -1,112 +1,128 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { generateLevel, applyMove, isExplosive, MOVES, type Move } from "@/lib/d8";
+import { useState, useCallback, useEffect } from "react";
 import GameStage from "./GameStage";
+import {
+  getMode,
+  MOVE_META,
+  MODE_BEST_KEY,
+  MODES,
+  type Mode,
+  type ModeCfg,
+} from "@/lib/mode";
 
-const SAVED_BEST_KEY = "goldcraft_best";
-
-function loadBest(): number | null {
+function loadBest(mode: Mode): number | null {
   if (typeof window === "undefined") return null;
-  const v = localStorage.getItem(SAVED_BEST_KEY);
+  const v = localStorage.getItem(MODE_BEST_KEY(mode));
   const n = v ? parseInt(v, 10) : NaN;
   return Number.isFinite(n) ? n : null;
 }
 
-function saveBest(n: number) {
+function saveBest(mode: Mode, n: number) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SAVED_BEST_KEY, String(n));
+  localStorage.setItem(MODE_BEST_KEY(mode), String(n));
 }
-
-interface MoveDef {
-  id: Move;
-  label: string;
-  key: string;
-  icon: string;
-  hint: string;
-}
-
-const MOVE_DEFS: MoveDef[] = [
-  { id: "rotL", label: "Rotate Left", key: "Q / ← / 1", icon: "⟲", hint: "90° counter-clockwise" },
-  { id: "rotR", label: "Rotate Right", key: "E / → / 3", icon: "⟳", hint: "90° clockwise" },
-  { id: "reflectH", label: "Reflect", key: "W / Space / 2", icon: "⇋", hint: "flip horizontally" },
-];
 
 type Status = "playing" | "won" | "lost";
 
 export default function Game() {
-  const [level, setLevel] = useState(() => generateLevel(0));
+  const [mode, setMode] = useState<Mode>("normal");
+  const cfg: ModeCfg<any, any> = getMode(mode);
+  const [level, setLevel] = useState(() => cfg.generateLevel(0));
   const [state, setState] = useState(() => level.start);
   const [status, setStatus] = useState<Status>("playing");
   const [moves, setMoves] = useState(0);
-  const [best, setBest] = useState<number | null>(() => (typeof window === "undefined" ? null : loadBest()));
-  const [message, setMessage] = useState("");
+  const [best, setBest] = useState<number | null>(() => loadBest(mode));
 
-  const busyRef = useRef(false);
+  // Reset to a fresh round for the (new) mode.
+  const resetForMode = useCallback(
+    (m: Mode) => {
+      const c = getMode(m);
+      const lvl = c.generateLevel(0);
+      setLevel(lvl);
+      setState(lvl.start);
+      setStatus("playing");
+      setMoves(0);
+      setBest(loadBest(m));
+    },
+    []
+  );
 
-  // New round: keep the SAME base but regenerate a fresh, valid level.
+  const switchMode = useCallback(
+    (m: Mode) => {
+      if (m === mode) return;
+      setMode(m);
+      resetForMode(m);
+    },
+    [mode, resetForMode]
+  );
+
   const startNewRound = useCallback(() => {
-    const nextId = level.id + 1;
-    const lvl = generateLevel(nextId);
+    const c = getMode(mode);
+    const lvl = c.generateLevel(level.id + 1);
     setLevel(lvl);
     setState(lvl.start);
     setStatus("playing");
     setMoves(0);
-    setMessage("");
-  }, [level.id]);
+  }, [mode, level.id]);
 
   const doMove = useCallback(
-    (m: Move) => {
+    (mv: string) => {
       if (status !== "playing") return;
-      const next = applyMove(state, m);
+      const c = getMode(mode);
+      const next = c.applyMove(state, mv);
       setState(next);
       setMoves((m) => m + 1);
-
-      if (isExplosive(next, level.explosives)) {
+      if (c.isExplosive(next, level.explosives)) {
         setStatus("lost");
-        setMessage("💥 Your experiment exploded!");
         return;
       }
       if (next === level.golden) {
         setStatus("won");
-        setMessage("✨ You transmuted gold!");
-        // best-moves: lower is better
+        const nb = moves + 1;
         setBest((b) => {
-          const nb = moves + 1;
           const newBest = b === null ? nb : Math.min(b, nb);
-          saveBest(newBest);
+          saveBest(mode, newBest);
           return newBest;
         });
       }
     },
-    [state, level, status, moves]
+    [state, level, mode, status, moves]
   );
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts. Map per-mode move ids.
   useEffect(() => {
-    const keyMap: Record<string, Move> = {
+    const keyMap: Record<string, string> = {
       q: "rotL", ArrowLeft: "rotL", "1": "rotL",
       e: "rotR", ArrowRight: "rotR", "3": "rotR",
-      w: "reflectH", " ": "reflectH", "2": "reflectH",
+      // vertical reflection (hard mode)
+      a: "reflectV", ArrowUp: "reflectV", "2": "reflectV",
+      // horizontal reflection (both modes)
+      w: "reflectH", " ": "reflectH", "4": "reflectH",
     };
     const onKey = (e: KeyboardEvent) => {
       const m = keyMap[e.key];
       if (m) {
-        e.preventDefault();
-        doMove(m);
+        const c = getMode(mode);
+        if (c.moveOrder.includes(m)) {
+          e.preventDefault();
+          doMove(m);
+        }
       }
-      // 'n' = next round
       if (e.key === "n") startNewRound();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [doMove, startNewRound]);
+  }, [doMove, startNewRound, mode]);
 
-  const outcomeText = useMemo(() => {
-    if (status === "won") return `You transmuted gold in ${moves} move${moves === 1 ? "" : "s"}!`;
-    if (status === "lost") return `Exploded after ${moves} move${moves === 1 ? "" : "s"}. The glyphs are unforgiving.`;
-    return "";
-  }, [status, moves]);
+  const outcomeText =
+    status === "won"
+      ? `You transmuted gold in ${moves} move${moves === 1 ? "" : "s"}!`
+      : status === "lost"
+      ? `Exploded after ${moves} move${moves === 1 ? "" : "s"}.`
+      : "";
+
+  const moveButtons = cfg.moveOrder.map((id) => MOVE_META[id]).filter(Boolean);
 
   return (
     <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-radial-void">
@@ -115,13 +131,31 @@ export default function Game() {
         <h1 className="font-display text-2xl font-black tracking-wide text-white">
           GOLD<span className="bg-gradient-to-r from-aurum-400 to-aurum-600 bg-clip-text text-transparent">CRAFT</span>
         </h1>
+
+        {/* Mode toggle */}
+        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-void-900/60 p-1">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => switchMode(m.key)}
+              className={`rounded-lg px-3 py-1.5 font-display text-sm font-bold transition ${
+                mode === m.key
+                  ? "bg-gradient-to-r from-azure-500 to-azure-700 text-white shadow"
+                  : "text-azure-300/60 hover:text-azure-200"
+              }`}
+              title={m.tagline}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-4 text-sm text-azure-300/80">
           <span className="font-display">
             Moves: <span className="text-white">{moves}</span>
           </span>
           <span className="font-display">
-            Best:{" "}
-            <span className="text-aurum-400">{best === null ? "—" : best}</span>
+            Best: <span className="text-aurum-400">{best === null ? "—" : best}</span>
           </span>
           <button
             onClick={startNewRound}
@@ -135,9 +169,14 @@ export default function Game() {
 
       {/* Stage */}
       <div className="relative z-0 flex-1">
-        <GameStage currentState={state} goldenState={level.golden} explosiveStates={level.explosives} />
+        <GameStage
+          currentState={state}
+          goldenState={level.golden}
+          explosiveStates={level.explosives}
+          points={cfg.glyphPoints}
+          order={cfg.order}
+        />
 
-        {/* Labels */}
         <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
           <span className="rounded-full bg-void-900/60 px-3 py-1 font-display text-xs uppercase tracking-widest text-aurum-400 animate-goldglow">
             Golden
@@ -145,7 +184,7 @@ export default function Game() {
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
           <span className="rounded-full bg-void-900/60 px-3 py-1 font-display text-xs uppercase tracking-widest text-cinnabar-400">
-            Explosive
+            {cfg.numExplosives} Explosive
           </span>
         </div>
 
@@ -167,32 +206,22 @@ export default function Game() {
             </div>
           </div>
         )}
-
-        {/* Message toast (transient) */}
-        {message && status === "playing" && (
-          <div className="pointer-events-none absolute inset-x-0 top-1/3 flex justify-center">
-            <span className="rounded bg-void-900/80 px-4 py-1 text-azure-300">{message}</span>
-          </div>
-        )}
       </div>
 
       {/* Move controls */}
-      <footer className="z-10 flex items-end justify-center gap-3 border-t border-white/5 bg-void-950/40 px-4 pb-5 pt-3 backdrop-blur">
-        {MOVE_DEFS.map((md) => (
+      <footer className="z-10 flex items-end justify-center gap-2 border-t border-white/5 bg-void-950/40 px-4 pb-5 pt-3 backdrop-blur">
+        {moveButtons.map((md) => (
           <button
             key={md.id}
             onClick={() => doMove(md.id)}
             disabled={status !== "playing"}
-            className="group flex min-w-[9rem] flex-col items-center gap-1 rounded-xl border border-azure-500/30 bg-azure-700/15 px-4 py-3 transition hover:border-azure-400/70 hover:bg-azure-700/30 disabled:opacity-40"
+            className="group flex min-w-[8rem] flex-col items-center gap-1 rounded-xl border border-azure-500/30 bg-azure-700/15 px-4 py-3 transition hover:border-azure-400/70 hover:bg-azure-700/30 disabled:opacity-40"
           >
             <span className="text-2xl text-azure-300 transition group-hover:text-white">{md.icon}</span>
             <span className="font-display text-sm font-bold text-azure-200">{md.label}</span>
             <span className="text-[10px] uppercase tracking-wider text-azure-300/50">{md.key}</span>
           </button>
         ))}
-        <span className="ml-2 hidden text-xs text-azure-300/40 sm:block">
-          {message && status === "playing" ? message : "Avoid the red glyphs. Reach the golden one."}
-        </span>
       </footer>
     </div>
   );
