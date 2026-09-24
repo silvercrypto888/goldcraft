@@ -6,16 +6,29 @@ import * as THREE from "three";
 describe("orientation == logic consistency", () => {
   it("state 0 is identity orientation", () => {
     const e = stateToEuler(0);
-    expect(e.y).toBe(0);
-    expect(e.z).toBe(0);
+    expect(Math.abs(e.y)).toBe(0);
+    expect(Math.abs(e.z)).toBe(0);
   });
 
-  it("rotR advances the Z rotation by 90°; four of them = full turn", () => {
-    const e1 = stateToEuler(applyMove(0, "rotR"));
-    expect(Math.abs(e1.z)).toBeCloseTo(Math.PI / 2, 5);
+  it("rotR spins clockwise (rotL counter-clockwise) from the player POV", () => {
+    // Three.js positive Z rotation is counter-clockwise from camera at +Z.
+    // So "rotate right" (rotR) must render as a NEGATIVE z-angle,
+    // and "rotate left" (rotL) as a POSITIVE z-angle.
+    const wrap = (a: number) => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    const rotRz = wrap(stateToEuler(applyMove(0, "rotR")).z);
+    const rotLz = wrap(stateToEuler(applyMove(0, "rotL")).z);
+    // rotR: clockwise => wrapped angle ~270° (i.e. -90° + 360°)
+    expect(rotRz).toBeCloseTo((3 * Math.PI) / 2, 5);
+    // rotL: counter-clockwise => wrapped angle ~90°
+    expect(rotLz).toBeCloseTo(Math.PI / 2, 5);
+
+    // Four rotR steps = full turn -> identity
     const q0 = eulerToQuat(stateToEuler(0));
-    const q4 = eulerToQuat(stateToEuler(applyMove(applyMove(applyMove(applyMove(0, "rotR"), "rotR"), "rotR"), "rotR")));
-    // q4 ≈ identity
+    const q4 = eulerToQuat(
+      stateToEuler(
+        applyMove(applyMove(applyMove(applyMove(0, "rotR"), "rotR"), "rotR"), "rotR")
+      )
+    );
     const dot = Math.abs(q0.dot(q4));
     expect(dot).toBeCloseTo(1, 5);
   });

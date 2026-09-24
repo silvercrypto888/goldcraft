@@ -18,10 +18,14 @@ export type EulerVec = { x: number; y: number; z: number };
 export function stateToEuler(k: number): EulerVec {
   const a = k % 4; // quarter turns (rotation part)
   const b = Math.floor(k / 4); // 0..1 reflections
+  // NOTE on sign: in Three.js a POSITIVE rotation.z spins COUNTER-CLOCKWISE
+  // as seen from the camera at +Z. The game's "rotR" must appear CLOCKWISE,
+  // and a larger state index `a` means "more rotR applied" — so we NEGATE the
+  // angle to make the displayed spin match the button labels (left/right).
   return {
     x: 0,
     y: b * Math.PI,
-    z: a * (Math.PI / 2),
+    z: -a * (Math.PI / 2),
   };
 }
 
