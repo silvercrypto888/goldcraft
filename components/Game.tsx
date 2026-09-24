@@ -33,6 +33,7 @@ export default function Game() {
   const [status, setStatus] = useState<Status>("playing");
   const [moves, setMoves] = useState(0);
   const [best, setBest] = useState<number | null>(() => loadBest(mode));
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Reset to a fresh round for the (new) mode.
   const resetForMode = useCallback(
@@ -110,6 +111,8 @@ export default function Game() {
         }
       }
       if (e.key === "n") startNewRound();
+      if (e.key === "?") setHelpOpen(true);
+      if (e.key === "Escape") setHelpOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -133,21 +136,31 @@ export default function Game() {
         </h1>
 
         {/* Mode toggle */}
-        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-void-900/60 p-1">
-          {MODES.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => switchMode(m.key)}
-              className={`rounded-lg px-3 py-1.5 font-display text-sm font-bold transition ${
-                mode === m.key
-                  ? "bg-gradient-to-r from-azure-500 to-azure-700 text-white shadow"
-                  : "text-azure-300/60 hover:text-azure-200"
-              }`}
-              title={m.tagline}
-            >
-              {m.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-void-900/60 p-1">
+            {MODES.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => switchMode(m.key)}
+                className={`rounded-lg px-3 py-1.5 font-display text-sm font-bold transition ${
+                  mode === m.key
+                    ? "bg-gradient-to-r from-azure-500 to-azure-700 text-white shadow"
+                    : "text-azure-300/60 hover:text-azure-200"
+                }`}
+                title={m.tagline}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="rounded-lg border border-white/10 bg-void-900/60 px-3 py-1.5 font-display text-sm font-bold text-azure-300/80 transition hover:border-azure-400/60 hover:text-azure-200"
+            title="How to play (press ?)"
+          >
+            How to Play
+          </button>
         </div>
 
         <div className="flex items-center gap-4 text-sm text-azure-300/80">
@@ -223,6 +236,95 @@ export default function Game() {
           </button>
         ))}
       </footer>
+
+      {/* How to Play modal */}
+      {helpOpen && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-void-950/70 backdrop-blur-sm"
+          onClick={() => setHelpOpen(false)}
+        >
+          <div
+            className="mx-4 max-h-[85dvh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-void-900/95 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h2 className="font-display text-2xl font-black text-white">
+                How to Play <span className="text-aurum-400">Goldcraft</span>
+              </h2>
+              <button
+                onClick={() => setHelpOpen(false)}
+                className="rounded-lg border border-white/10 px-2.5 py-1 text-azure-300/70 transition hover:border-azure-400/60 hover:text-white"
+                title="Close (press ? or Esc)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4 text-sm leading-relaxed text-azure-200/90">
+              <div className="flex items-center gap-3 rounded-xl border border-aurum-500/30 bg-aurum-500/10 p-3">
+                <span className="text-2xl">🎯</span>
+                <p>
+                  <strong className="text-aurum-400">Goal:</strong> you hold a center glyph.
+                  Match its shape exactly to the <strong className="text-aurum-400">golden</strong> glyph on the
+                  left to transmute gold. Avoid landing on the red <strong>explosive</strong> glyphs to the right.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="font-display text-base font-bold text-white">Your three moves (Normal)</h3>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <div className="text-2xl text-azure-300">⟲</div>
+                    <div className="mt-1 font-display font-bold text-azure-200">Rotate Left</div>
+                    <div className="text-xs text-azure-300/60">spin your glyph 90°</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wider text-azure-400/60">Q / ← / 1</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <div className="text-2xl text-azure-300">⟳</div>
+                    <div className="mt-1 font-display font-bold text-azure-200">Rotate Right</div>
+                    <div className="text-xs text-azure-300/60">spin your glyph 90°</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wider text-azure-400/60">E / → / 3</div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+                    <div className="text-2xl text-azure-300">⇌</div>
+                    <div className="mt-1 font-display font-bold text-azure-200">Reflect</div>
+                    <div className="text-xs text-azure-300/60">mirror your glyph top↔bottom</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wider text-azure-400/60">W / Space / 4</div>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-azure-300/60">Every move also works by clicking the buttons at the bottom.</p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <h3 className="font-display text-base font-bold text-white">A quick example</h3>
+                <p className="mt-1">
+                  The three glyphs are different states of the <em>same</em> shape. Rotating or reflecting
+                  your center glyph slowly walks it through every possible orientation. Your job is to find
+                  the handful of moves that land yours exactly on the golden one — while steering clear of
+                  the explosives.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <h3 className="font-display text-base font-bold text-white">Tips</h3>
+                <ul className="mt-1 list-disc space-y-1 pl-5">
+                  <li>Every generated round is <strong>winnable</strong> — a safe path always exists.</li>
+                  <li>Reaching the golden glyph in fewer moves improves your <strong>Best</strong> score.</li>
+                  <li>Hit <strong>N</strong> anytime for a new round.</li>
+                  <li>Switch to <strong>Hard</strong> for a tougher D₁₂ challenge once you master Normal.</li>
+                </ul>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setHelpOpen(false)}
+              className="mt-6 w-full rounded-xl bg-gradient-to-r from-aurum-500 to-aurum-700 px-6 py-3 font-display text-lg font-bold text-void-950 shadow-lg shadow-aurum-500/30 transition hover:brightness-110"
+            >
+              Got it — let's craft!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
