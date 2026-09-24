@@ -8,30 +8,17 @@ import { stateToQuat } from "@/lib/orient";
 
 export type GlyphTone = "player" | "gold" | "danger";
 
-const TONES: Record<
-  GlyphTone,
-  { body: string; emissive: string; glow: string }
-> = {
-  player: {
-    body: "#38b6ff",
-    emissive: "#0d8fff",
-    glow: "#7fd4ff",
-  },
-  gold: {
-    body: "#f5a623",
-    emissive: "#d97b0c",
-    glow: "#ffe3a3",
-  },
-  danger: {
-    body: "#e63a25",
-    emissive: "#b3180f",
-    glow: "#ff6b5e",
-  },
-};
+interface ToneCfg {
+  body: string;
+  emissive: string;
+  glow: string;
+}
 
-const CELL = 0.3; // world size of each glyph cell (the tile is ~4 cells wide)
-const CENTER_LIFT = 0.9; // push the floating tile away from camera a touch
-const THICKNESS = 0.18; // tile depth along Z (so it reads as a solid slab)
+const TONES: Record<GlyphTone, ToneCfg> = {
+  player: { body: "#3d8bff", emissive: "#1f6fff", glow: "#7fd4ff" },
+  gold: { body: "#f5a623", emissive: "#d97b0c", glow: "#ffe3a3" },
+  danger: { body: "#e63a25", emissive: "#b3180f", glow: "#ff6b5e" },
+};
 
 interface Glyph3DProps {
   state: number;
@@ -50,18 +37,20 @@ export default function Glyph3D({
   const target = useRef(new THREE.Quaternion());
   const toneCfg = TONES[tone];
 
-  const { body, emissive } = toneCfg;
+  // Cell geometry — generously larger, chunkier "gold ore" cubes so they read
+  // clearly on the dark background and at size.
+  const cellSize = 1.0;
+  const cellDepth = 0.55; // thicker slab so flips read as a solid block
+  const spacing = 1.24; // gap between cell centers (slightly larger than size)
 
-  // Build the G-shaped set of cells once (positions on the tile face).
   const cells = useMemo(
     () =>
       BASE_POINTS.map(([x, y]) => ({
-        pos: [x * 2.2, y * 2.2, 0] as [number, number, number],
+        pos: [x * spacing, y * spacing, 0] as [number, number, number],
       })),
-    []
+    [spacing]
   );
 
-  // Whenever `state` changes, compute the target orientation.
   useEffect(() => {
     target.current.copy(stateToQuat(state));
     if (!animate) {
@@ -76,21 +65,18 @@ export default function Glyph3D({
 
   return (
     <group ref={group} scale={size}>
-      {/* The tile slab: back plate so flips read as a solid double-sided slab */}
       {cells.map((c, i) => (
         <mesh key={i} position={c.pos}>
-          <boxGeometry args={[CELL, CELL, THICKNESS]} />
-          <meshStandardMaterial color={body} emissive={emissive} emissiveIntensity={0.85} metalness={0.4} roughness={0.35} />
+          <boxGeometry args={[cellSize, cellSize, cellDepth]} />
+          <meshStandardMaterial
+            color={toneCfg.body}
+            emissive={toneCfg.emissive}
+            emissiveIntensity={0.9}
+            metalness={0.5}
+            roughness={0.3}
+          />
         </mesh>
       ))}
-      {/* A faint backing panel to make the whole tile silhouette read when flipping */}
-      <mesh position={[0, 0, -0.01 - THICKNESS / 2 - 0.02]}>
-        <planeGeometry args={[4.6, 5.4]} />
-        <meshBasicMaterial color={toneCfg.glow} transparent opacity={0.06} />
-      </mesh>
     </group>
   );
 }
-
-// Export point data for convenience.
-export { CELL };

@@ -138,14 +138,14 @@ export default function Game() {
         <GameStage currentState={state} goldenState={level.golden} explosiveStates={level.explosives} />
 
         {/* Labels */}
-        <div className="pointer-events-none absolute inset-x-0 top-6 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
           <span className="rounded-full bg-void-900/60 px-3 py-1 font-display text-xs uppercase tracking-widest text-aurum-400 animate-goldglow">
-            Golden Glyph — the target
+            Golden
           </span>
         </div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 flex items-center justify-center">
+        <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
           <span className="rounded-full bg-void-900/60 px-3 py-1 font-display text-xs uppercase tracking-widest text-cinnabar-400">
-            Explosive Glyphs — do not touch
+            Explosive
           </span>
         </div>
 

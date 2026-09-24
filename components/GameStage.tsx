@@ -4,47 +4,36 @@ import { useRef, useEffect } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import Glyph3D from "./Glyph3D";
+import Glyph3D, { type GlyphTone } from "./Glyph3D";
 
-// A single floating glyph that gently bobs and spins toward a target orientation.
+// A single floating glyph that gently bobs (and for the player, eases toward
+// a target orientation when the state changes).
 function FloatingGlyph({
   position,
   state,
   tone,
   scale = 1,
-  autoSpin = false,
+  animate = true,
 }: {
   position: [number, number, number];
   state: number;
-  tone: "lightBlue" | "gold" | "danger";
+  tone: GlyphTone;
   scale?: number;
-  autoSpin?: boolean;
+  animate?: boolean;
 }) {
   const ref = useRef<THREE.Group>(null!);
-  const toneMap = {
-    lightBlue: "player" as const,
-    gold: "gold" as const,
-    danger: "danger" as const,
-  };
   const baseY = position[1];
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
     const t = clock.getElapsedTime();
-    // gentle float
+    // Gentle bob only — no spin.
     ref.current.position.y = baseY + Math.sin(t * 1.4 + position[0]) * 0.12;
-    if (autoSpin) {
-      ref.current.rotation.y += 0.003;
-    }
   });
 
   return (
-    <group
-      ref={ref}
-      position={position}
-      scale={scale}
-    >
-      <Glyph3D state={state} tone={toneMap[tone]} size={scale} animate />
+    <group ref={ref} position={position} scale={scale}>
+      <Glyph3D state={state} tone={tone} size={1} animate={animate} />
     </group>
   );
 }
@@ -58,61 +47,40 @@ export default function GameStage({
   goldenState: number;
   explosiveStates: number[];
 }) {
-  const goldColor = "#f5a623";
-  const blueColor = "#38b6ff";
-  const dangerColor = "#e63a25";
-
+  // Layout (screen coords, y up):
+  //   golden glyph — LEFT, static
+  //   player glyph  — CENTER
+  //   explosives    — RIGHT
+  // 3 explosives stack vertically so all three are readable side-by-side.
   return (
     <Canvas
-      dpr={[1, 1.5]} // capped DPR for low-end machines
-      camera={{ position: [0, 0, 8], fov: 50 }}
+      dpr={[1, 1.5]}
+      camera={{ position: [0, 0, 10], fov: 45 }}
       gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
       style={{ background: "transparent" }}
     >
-      <ambientLight intensity={0.6} />
-      <pointLight position={[4, 5, 6]} intensity={30} color="#7fd4ff" />
-      <pointLight position={[-4, 3, 4]} intensity={22} color="#f5a623" />
-      <pointLight position={[0, -3, 5]} intensity={14} color="#ffffff" />
+      <ambientLight intensity={0.7} />
+      <pointLight position={[4, 5, 6]} intensity={40} color="#7fd4ff" />
+      <pointLight position={[-5, 3, 4]} intensity={28} color="#f5a623" />
+      <pointLight position={[0, -3, 5]} intensity={18} color="#ffffff" />
 
-      {/* Ambient particles / stars for atmosphere (cheap) */}
       <Stars />
 
-      {/* Player glyph — center, big */}
-      <FloatingGlyph
-        position={[0, 0, 0]}
-        state={currentState}
-        tone="lightBlue"
-        scale={1.15}
-      />
+      {/* Golden glyph — LEFT, static (no spin, not animated) */}
+      <FloatingGlyph position={[-3.4, 0, 0]} state={goldenState} tone="gold" scale={1.1} animate={false} />
 
-      {/* Golden glyph — top, the target */}
-      <FloatingGlyph
-        position={[0, 2.9, -0.5]}
-        state={goldenState}
-        tone="gold"
-        scale={0.8}
-        autoSpin
-      />
+      {/* Player glyph — CENTER, bigger, animated */}
+      <FloatingGlyph position={[0, 0, 0.4]} state={currentState} tone="player" scale={1.6} animate />
 
-      {/* Explosives — spread at the bottom, danger */}
+      {/* Explosives — RIGHT, vertical stack, all static */}
       {explosiveStates.map((s, i) => {
-        const x = (i - 1) * 1.9;
+        const y = (i - 1) * 1.7;
         return (
-          <FloatingGlyph
-            key={i}
-            position={[x, -2.8, -0.4]}
-            state={s}
-            tone="danger"
-            scale={0.62}
-          />
+          <FloatingGlyph key={i} position={[3.4, y, 0]} state={s} tone="danger" scale={0.9} animate={false} />
         );
       })}
 
-      <OrbitControls
-        enableZoom={false}
-        enablePan={false}
-        enableRotate={false}
-      />
+      <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
     </Canvas>
   );
 }
@@ -124,7 +92,7 @@ function Stars() {
   const { viewport } = useThree();
 
   useEffect(() => {
-    const count = 200;
+    const count = 220;
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       arr[i * 3] = (Math.random() - 0.5) * viewport.width * 2;
