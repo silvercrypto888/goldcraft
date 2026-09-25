@@ -128,7 +128,14 @@ export default function Game() {
   const moveButtons = cfg.moveOrder.map((id) => MOVE_META[id]).filter(Boolean);
 
   return (
-    <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-radial-void">
+    <div
+      className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-radial-void"
+      style={{
+        // When OrientationLock force-rotates to landscape, the stage box is
+        // the swapped viewport sizes via CSS vars; fall back to 100dvh otherwise.
+        height: "var(--gc-stage-h, 100dvh)",
+      }}
+    >
       {/* Header */}
       <header className="z-10 flex items-center justify-between px-6 py-4">
         <h1 className="font-display text-2xl font-black tracking-wide text-white">
@@ -181,7 +188,7 @@ export default function Game() {
       </header>
 
       {/* Stage */}
-      <div className="relative z-0 flex-1">
+      <div className="relative z-0 min-h-0 flex-1">
         <GameStage
           currentState={state}
           goldenState={level.golden}
