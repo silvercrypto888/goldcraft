@@ -34,6 +34,7 @@ export default function Game() {
   const [moves, setMoves] = useState(0);
   const [best, setBest] = useState<number | null>(() => loadBest(mode));
   const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Reset to a fresh round for the (new) mode.
   const resetForMode = useCallback(
@@ -112,7 +113,10 @@ export default function Game() {
       }
       if (e.key === "n") startNewRound();
       if (e.key === "?") setHelpOpen(true);
-      if (e.key === "Escape") setHelpOpen(false);
+      if (e.key === "Escape") {
+        setHelpOpen(false);
+        setSettingsOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -167,6 +171,14 @@ export default function Game() {
             title="How to play (press ?)"
           >
             How to Play
+          </button>
+
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-lg border border-white/10 bg-void-900/60 px-3 py-1.5 font-display text-sm font-bold text-azure-300/80 transition hover:border-azure-400/60 hover:text-azure-200"
+            title="Settings"
+          >
+            ⚙️
           </button>
         </div>
 
@@ -318,7 +330,7 @@ export default function Game() {
                   <li>Every generated round is <strong>winnable</strong> — a safe path always exists.</li>
                   <li>Reaching the golden glyph in fewer moves improves your <strong>Best</strong> score.</li>
                   <li>Hit <strong>N</strong> anytime for a new round.</li>
-                  <li>Switch to <strong>Hard</strong> for a tougher D₁₂ challenge once you master Normal.</li>
+                  <li>Switch to <strong>Hard</strong> for a tougher D₁₂ challenge once you master Normal, or unlock <strong>Extreme</strong> (D₁₆) from Settings.</li>
                 </ul>
               </div>
             </div>
@@ -328,6 +340,72 @@ export default function Game() {
               className="mt-6 w-full rounded-xl bg-gradient-to-r from-aurum-500 to-aurum-700 px-6 py-3 font-display text-lg font-bold text-void-950 shadow-lg shadow-aurum-500/30 transition hover:brightness-110"
             >
               Got it — let's craft!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Settings modal */}
+      {settingsOpen && (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-void-950/70 backdrop-blur-sm"
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            className="mx-4 max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-void-900/95 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h2 className="font-display text-2xl font-black text-white">
+                Settings
+              </h2>
+              <button
+                onClick={() => setSettingsOpen(false)}
+                className="rounded-lg border border-white/10 px-2.5 py-1 text-azure-300/70 transition hover:border-azure-400/60 hover:text-white"
+                title="Close (press Esc)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4 text-sm leading-relaxed text-azure-200/90">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <h3 className="font-display text-base font-bold text-white">Difficulty</h3>
+                <p className="mt-1 text-xs text-azure-300/60">
+                  Extreme mode unlocks D₁₆ with 16 states, 45° rotations, and longer puzzles.
+                </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  {MODES.map((m) => (
+                    <label
+                      key={m.key}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/5 bg-void-900/40 px-3 py-2 transition hover:bg-void-900/60"
+                    >
+                      <input
+                        type="radio"
+                        name="mode"
+                        value={m.key}
+                        checked={mode === m.key}
+                        onChange={() => {
+                          switchMode(m.key);
+                          setSettingsOpen(false);
+                        }}
+                        className="accent-azure-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-display font-bold text-azure-200">{m.label}</span>
+                        <span className="text-xs text-azure-300/50">{m.tagline}</span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSettingsOpen(false)}
+              className="mt-6 w-full rounded-xl bg-gradient-to-r from-azure-500 to-azure-700 px-6 py-3 font-display text-lg font-bold text-white shadow-lg shadow-azure-500/30 transition hover:brightness-110"
+            >
+              Done
             </button>
           </div>
         </div>

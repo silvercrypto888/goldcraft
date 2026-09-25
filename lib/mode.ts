@@ -4,9 +4,10 @@
 
 import * as d8 from "./d8";
 import * as d12 from "./d12";
+import * as d16 from "./d16";
 import type { GroupOrder } from "./orient";
 
-export type Mode = "normal" | "hard";
+export type Mode = "normal" | "hard" | "extreme";
 
 export interface ModeCfg<N extends number, M extends string> {
   key: Mode;
@@ -63,10 +64,29 @@ export const HARD_MODE: ModeCfg<number, "rotL" | "rotR" | "reflectV" | "reflectH
   moveOrder: ["rotL", "rotR", "reflectV", "reflectH"],
 };
 
+export const EXTREME_MODE: ModeCfg<number, "rotL" | "rotR" | "reflectV" | "reflectH"> = {
+  key: "extreme",
+  label: "Extreme",
+  tagline: "D₁₆ · 4 ops",
+  order: 8,
+  numStates: 16,
+  numExplosives: 4,
+  minMoves: 5,
+  applyMove: d16.applyMove,
+  nextStates: d16.nextStates,
+  generateLevel: (id) => d16.generateLevel(id, d16.MIN_MOVES_EXTREME),
+  pathToMoves: d16.pathToMoves,
+  isExplosive: d16.isExplosive,
+  glyphPoints: d16.BASE_POINTS,
+  moveOrder: ["rotL", "rotR", "reflectV", "reflectH"],
+};
+
 export const MODES: ModeCfg<any, any>[] = [NORMAL_MODE, HARD_MODE];
 
 export function getMode(mode: Mode): ModeCfg<any, any> {
-  return mode === "hard" ? HARD_MODE : NORMAL_MODE;
+  if (mode === "hard") return HARD_MODE;
+  if (mode === "extreme") return EXTREME_MODE;
+  return NORMAL_MODE;
 }
 
 /** Move display metadata shared by both modes. */

@@ -18,7 +18,7 @@
 // consistent with the game logic.
 import * as THREE from "three";
 
-export type GroupOrder = 4 | 6; // D8 vs D12
+export type GroupOrder = 4 | 6 | 8; // D8 vs D12 vs D16
 export type EulerVec = { x: number; y: number; z: number };
 
 /**
