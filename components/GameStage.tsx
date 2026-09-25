@@ -1,11 +1,32 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import Glyph3D, { type GlyphTone } from "./Glyph3D";
 import type { GroupOrder } from "@/lib/orient";
+
+interface Size { w: number; h: number }
+
+// R3F v8 sizes its <canvas> from the parent's getBoundingClientRect(), which
+// under the OrientationLock CSS `rotate(90deg)` returns the ROTATED (portrait)
+// box — so the 3D scene renders portrait and the glyphs slide out of frame.
+// This component forces the correct LANDSCAPE size from inside the Canvas,
+// using the transform-immune offsetWidth/offsetHeight of the wrapper.
+function ForceSize({ target }: { target: React.MutableRefObject<Size> }) {
+  const set = useThree((s) => s.setSize);
+  useEffect(() => {
+    const apply = () => {
+      const { w, h } = target.current;
+      if (w > 0 && h > 0) set(w, h);
+    };
+    apply();
+    const id = window.setInterval(apply, 150); // re-assert while size settles
+    return () => window.clearInterval(id);
+  }, [set, target]);
+  return null;
+}
 
 function FloatingGlyph({
   position,
@@ -56,32 +77,66 @@ export default function GameStage({
   const SIDE_SCALE = 1.0;
   const EXPLO_SPACING = 2.3;
 
+  // R3F sizes its <canvas> from getBoundingClientRect(), which — under the
+  // OrientationLock CSS `rotate(90deg)` — returns the rotated (portrait) box
+  // and renders a squashed scene. We measure OFFsetWidth/Height instead
+  // (immune to transforms) and pin the canvas explicitly, so the 3D scene is
+  // always landscape and the glyphs stay on screen.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const sizeRef = useRef<Size>({ w: 0, h: 0 });
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const measure = () => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (w > 0 && h > 0) {
+        sizeRef.current = { w, h };
+        setReady(true);
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (wrapRef.current) ro.observe(wrapRef.current);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
   return (
-    <Canvas
-      dpr={[1, 1.5]}
-      camera={{ position: [0, 0, 15], fov: 42 }}
-      gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
-      style={{ background: "transparent" }}
-    >
-      <ambientLight intensity={0.7} />
-      <pointLight position={[6, 5, 6]} intensity={40} color="#7fd4ff" />
-      <pointLight position={[-6, 3, 4]} intensity={28} color="#f5a623" />
-      <pointLight position={[0, -3, 5]} intensity={18} color="#ffffff" />
+    <div ref={wrapRef} className="relative h-full w-full">
+      {ready && (
+        <Canvas
+          dpr={[1, 1.5]}
+          camera={{ position: [0, 0, 15], fov: 42 }}
+          gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
+          style={{ background: "transparent" }}
+        >
+          <ForceSize target={sizeRef} />
+          <ambientLight intensity={0.7} />
+          <pointLight position={[6, 5, 6]} intensity={40} color="#7fd4ff" />
+          <pointLight position={[-6, 3, 4]} intensity={28} color="#f5a623" />
+          <pointLight position={[0, -3, 5]} intensity={18} color="#ffffff" />
 
-      <Stars />
+          <Stars />
 
-      <FloatingGlyph position={[-ZONE_X, 0, 0]} state={goldenState} tone="gold" points={points} order={order} scale={SIDE_SCALE} animate={false} />
-      <FloatingGlyph position={[0, 0, 0.4]} state={currentState} tone="player" points={points} order={order} scale={PLAYER_SCALE} animate />
+          <FloatingGlyph position={[-ZONE_X, 0, 0]} state={goldenState} tone="gold" points={points} order={order} scale={SIDE_SCALE} animate={false} />
+          <FloatingGlyph position={[0, 0, 0.4]} state={currentState} tone="player" points={points} order={order} scale={PLAYER_SCALE} animate />
 
-      {explosiveStates.map((s, i) => {
-        const y = (i - 1) * EXPLO_SPACING;
-        return (
-          <FloatingGlyph key={i} position={[ZONE_X, y, 0]} state={s} tone="danger" points={points} order={order} scale={SIDE_SCALE} animate={false} />
-        );
-      })}
+          {explosiveStates.map((s, i) => {
+            const y = (i - 1) * EXPLO_SPACING;
+            return (
+              <FloatingGlyph key={i} position={[ZONE_X, y, 0]} state={s} tone="danger" points={points} order={order} scale={SIDE_SCALE} animate={false} />
+            );
+          })}
 
-      <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
-    </Canvas>
+          <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
+        </Canvas>
+      )}
+    </div>
   );
 }
 
