@@ -81,7 +81,7 @@ export const EXTREME_MODE: ModeCfg<number, "rotL" | "rotR" | "reflectV" | "refle
   moveOrder: ["rotL", "rotR", "reflectV", "reflectH"],
 };
 
-export const MODES: ModeCfg<any, any>[] = [NORMAL_MODE, HARD_MODE];
+export const MODES: ModeCfg<any, any>[] = [NORMAL_MODE, HARD_MODE, EXTREME_MODE];
 
 export function getMode(mode: Mode): ModeCfg<any, any> {
   if (mode === "hard") return HARD_MODE;
